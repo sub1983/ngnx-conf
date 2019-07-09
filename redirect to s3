@@ -1,0 +1,44 @@
+#user  nobody;
+
+error_log  /var/log/nginx/error.log  notice;
+
+server {
+  listen 80 default_server;
+  resolver 8.8.8.8;
+  server_name  fr.qburst.build;
+  access_log /var/log/nginx/access.log;
+  error_page   500 502 503 504  /50x.html;
+
+  location = /50x.html {
+    root   html;
+  }
+
+  location /login/callback {
+    rewrite ^(.*)$ http://172.31.24.160:8001/ca/api/commerce/v3/en/login/callback redirect;
+  }
+
+  location ~ /ca/api/commerce/(v2|v3|v4)/ {
+    proxy_set_header    Host 172.31.24.160;
+    rewrite ^/ca/api/commerce/(v2|v3|v4)/(.*) /commerce/v3/uq/ca/$2 break;
+    proxy_pass          http://172.31.24.160:8001;
+  }
+
+  location ~ /ca/(en|fr)/(.+\.(css|js|woff2|woff|ttf|eot|png)) {
+    proxy_set_header    Host uq-global-ec-spa-pc.s3-ap-northeast-1.amazonaws.com;
+    rewrite ^/ca/(en|fr)/(.*) /ca/$1/$2 break;
+    proxy_pass          https://uq-global-ec-spa-pc.s3-ap-northeast-1.amazonaws.com;
+  }
+
+  location ~ /ca/(en|fr) {
+    proxy_set_header    Host uq-global-ec-spa-pc.s3-ap-northeast-1.amazonaws.com;
+    rewrite ^/ca/(en|fr)(.*) /ca/$1/catalog/index.html break;
+    proxy_pass         https://uq-global-ec-spa-pc.s3-ap-northeast-1.amazonaws.com;
+  }
+
+
+
+  location / {
+    return 301 http://fr.qburst.build/ca/en;
+    #return 301 https://uq-global-ec-spa-pc.s3-ap-northeast-1.amazonaws.com/ca/en/catalog/index.html;
+  }
+}
